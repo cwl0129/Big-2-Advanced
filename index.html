@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>頂級鋤大D計分器</title>
+    <style>
+        :root { --primary: #2c3e50; --win: #27ae60; --loss: #e74c3c; --bg: #f4f7f6; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 12px; color: var(--primary); }
+        .container { max-width: 500px; margin: auto; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); padding: 15px; margin-bottom: 15px; }
+        
+        /* 標題與設定按鈕 */
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        h2 { margin: 0; font-size: 1.1rem; }
+        .btn-setting { background: #ecf0f1; border: none; border-radius: 8px; padding: 8px 12px; font-size: 18px; cursor: pointer; color: #333; box-shadow: 0 2px #bdc3c7; }
+        .btn-setting:active { transform: translateY(2px); box-shadow: 0 0px #bdc3c7; }
+
+        h3 { font-size: 1rem; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-bottom: 15px; }
+        
+        /* 總分看板 */
+        .scoreboard { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; text-align: center; }
+        .player-score { background: #f8f9fa; padding: 10px 4px; border-radius: 8px; border: 1px solid #e9ecef; }
+        .player-name-input { width: 100%; border: none; background: transparent; text-align: center; font-weight: bold; font-size: 14px; color: #333; border-bottom: 1.5px dashed #ccc; padding-bottom: 3px; box-sizing: border-box; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+        .player-name-input:focus { outline: none; border-bottom: 1.5px solid var(--win); background: white; }
+        .score-val { font-size: 20px; display: block; margin-top: 8px; font-weight: 900; }
+
+        /* 輸入區 */
+        .input-row { display: grid; grid-template-columns: 1.2fr 1.5fr 1fr; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .name-label { font-weight: bold; font-size: 14px; color: #34495e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; text-align: center; box-sizing: border-box; -webkit-appearance: none; }
+        
+        /* 標籤 */
+        .tag { font-size: 12px; padding: 6px 4px; border-radius: 6px; text-align: center; color: white; font-weight: bold; opacity: 0; transition: opacity 0.2s ease-in-out; }
+        .tag.active { opacity: 1; }
+        .double { background: #f39c12; }
+        .triple { background: #d35400; }
+        .quad { background: #c0392b; }
+        .cap-tag { background: #8e44ad; } /* 封頂特別顏色 */
+
+        button.main-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.1s; }
+        .btn-calc { background: var(--win); color: white; margin-top: 5px; box-shadow: 0 4px #1e8449; }
+        .btn-calc:active { box-shadow: 0 0px #1e8449; transform: translateY(4px); }
+        .btn-reset { background: #e74c3c; color: white; margin-top: 15px; font-size: 14px; padding: 10px; box-shadow: 0 3px #c0392b; }
+        .btn-reset:active { box-shadow: 0 0px #c0392b; transform: translateY(3px); }
+
+        /* 歷史紀錄 */
+        .history-container { border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
+        .history-header { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #f0f2f5; padding: 8px 4px; text-align: center; font-size: 12px; font-weight: bold; color: #555; border-bottom: 1px solid #ddd; }
+        .history-header span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history { max-height: 200px; overflow-y: auto; background: white; }
+        .history-item { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); text-align: center; border-bottom: 1px solid #f9f9f9; padding: 10px 4px; font-size: 14px; font-weight: bold; }
+
+        /* 設定彈出視窗 */
+        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; padding: 15px; box-sizing: border-box; backdrop-filter: blur(3px); }
+        .modal-content { background: white; width: 100%; max-width: 400px; border-radius: 15px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+        .setting-group { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 15px; }
+        .setting-row input[type="number"] { width: 70px; padding: 6px; text-align: center; border: 1px solid #ccc; border-radius: 5px; }
+        .setting-row input[type="checkbox"] { transform: scale(1.3); margin-right: 8px; }
+        .mode-select { width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid #ccc; font-size: 15px; background: #f9f9f9; }
+        .btn-close-modal { background: #95a5a6; color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <div class="header-row">
+            <h2>📊 實時積分 (點名改名)</h2>
+            <button class="btn-setting" onclick="openSettings()">⚙️</button>
+        </div>
+        <div class="scoreboard">
+            <div class="player-score"><input type="text" id="name0" class="player-name-input" value="玩家 A" maxlength="6" oninput="syncNames(0)" onclick="this.select()"><span class="score-val" id="total0">0</span></div>
+            <div class="player-score"><input type="text" id="name1" class="player-name-input" value="玩家 B" maxlength="6" oninput="syncNames(1)" onclick="this.select()"><span class="score-val" id="total1">0</span></div>
+            <div class="player-score"><input type="text" id="name2" class="player-name-input" value="玩家 C" maxlength="6" oninput="syncNames(2)" onclick="this.select()"><span class="score-val" id="total2">0</span></div>
+            <div class="player-score"><input type="text" id="name3" class="player-name-input" value="玩家 D" maxlength="6" oninput="syncNames(3)" onclick="this.select()"><span class="score-val" id="total3">0</span></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>🃏 本局剩餘張數</h3>
+        <div id="input-list">
+            <div class="input-row"><div class="name-label" id="label0">玩家 A</div><input type="number" id="p0" placeholder="0" min="0" max="13" oninput="checkTag(0)"><div id="tag0" class="tag"></div></div>
+            <div class="input-row"><div class="name-label" id="label1">玩家 B</div><input type="number" id="p1" placeholder="0" min="0" max="13" oninput="checkTag(1)"><div id="tag1" class="tag"></div></div>
+            <div class="input-row"><div class="name-label" id="label2">玩家 C</div><input type="number" id="p2" placeholder="0" min="0" max="13" oninput="checkTag(2)"><div id="tag2" class="tag"></div></div>
+            <div class="input-row"><div class="name-label" id="label3">玩家 D</div><input type="number" id="p3" placeholder="0" min="0" max="13" oninput="checkTag(3)"><div id="tag3" class="tag"></div></div>
+        </div>
+        <button class="main-btn btn-calc" onclick="submitRound()">結算此局</button>
+    </div>
+
+    <div class="card">
+        <h3>📜 最近紀錄</h3>
+        <div class="history-container">
+            <div class="history-header">
+                <span id="hist-name0">玩家 A</span><span id="hist-name1">玩家 B</span><span id="hist-name2">玩家 C</span><span id="hist-name3">玩家 D</span>
+            </div>
+            <div class="history" id="history-box"><div style="text-align:center; color:#999; padding: 15px;" id="no-history">尚未開始牌局</div></div>
+        </div>
+        <button class="main-btn btn-reset" onclick="resetAll()">⚠️ 清空所有數據</button>
+    </div>
+</div>
+
+<div id="settings-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h2 style="margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">⚙️ 遊戲設定</h2>
+        
+        <div class="setting-group">
+            <label style="font-weight: bold; color: var(--primary);">🎯 計分模式</label>
+            <select id="set-mode" class="mode-select">
+                <option value="standard">一家贏三家 (贏家全取)</option>
+                <option value="pairwise">位位計 / 贏位計 (逐家計差額)</option>
+            </select>
+            <div style="font-size:12px; color:#7f8c8d; margin-top:5px;">*位位計自動幫你計好各家差額對消，唔使再心算！</div>
+        </div>
+
+        <div class="setting-group">
+            <label style="font-weight: bold; color: var(--primary); display:block; margin-bottom:10px;">🔥 炒牌門檻 (開關及張數)</label>
+            <div class="setting-row">
+                <label><input type="checkbox" id="set-dbl-en"> 雙炒 (x2)</label>
+                <span>≥ <input type="number" id="set-dbl-card" min="1" max="13"> 張</span>
+            </div>
+            <div class="setting-row">
+                <label><input type="checkbox" id="set-tpl-en"> 三炒 (x3)</label>
+                <span>≥ <input type="number" id="set-tpl-card" min="1" max="13"> 張</span>
+            </div>
+            <div class="setting-row">
+                <label><input type="checkbox" id="set-quad-en"> 四炒 (x4)</label>
+                <span>≥ <input type="number" id="set-quad-card" min="1" max="13"> 張</span>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label style="font-weight: bold; color: var(--primary); display:block; margin-bottom:10px;">🛑 封頂限制</label>
+            <div class="setting-row">
+                <label><input type="checkbox" id="set-cap-en"> 啟用封頂</label>
+                <span>最多輸 <input type="number" id="set-cap-val" min="1" max="100"> 分</span>
+            </div>
+            <div style="font-size:12px; color:#7f8c8d; margin-top:5px;">*就算中咗四炒，輸嘅分數都唔會超過呢個數值。</div>
+        </div>
+
+        <button class="main-btn btn-calc" onclick="saveSettings()">儲存設定</button>
+        <button class="btn-close-modal" onclick="closeSettings()">取消</button>
+    </div>
+</div>
+
+<script>
+    let totals = [0, 0, 0, 0];
+    
+    // 預設設定檔
+    let settings = {
+        mode: 'standard', 
+        dblEn: true, dblCard: 8,
+        tplEn: true, tplCard: 10,
+        quadEn: true, quadCard: 13,
+        capEn: true, capVal: 13 // 預設開啟封頂，最多輸13分
+    };
+
+    window.onload = function() {
+        const savedScores = localStorage.getItem('big2_totals');
+        if (savedScores) totals = JSON.parse(savedScores);
+        updateScoreDisplay();
+        
+        for (let i = 0; i < 4; i++) {
+            const savedName = localStorage.getItem(`big2_name_${i}`);
+            if (savedName) {
+                document.getElementById(`name${i}`).value = savedName;
+                document.getElementById(`label${i}`).innerText = savedName;
+                document.getElementById(`hist-name${i}`).innerText = savedName;
+            }
+        }
+        const savedHistory = localStorage.getItem('big2_history');
+        if (savedHistory) document.getElementById('history-box').innerHTML = savedHistory;
+
+        const savedSettings = localStorage.getItem('big2_sys_settings');
+        if (savedSettings) settings = JSON.parse(savedSettings);
+        applySettingsToUI();
+    };
+
+    function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; applySettingsToUI(); }
+    function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+    
+    function applySettingsToUI() {
+        document.getElementById('set-mode').value = settings.mode;
+        document.getElementById('set-dbl-en').checked = settings.dblEn;
+        document.getElementById('set-dbl-card').value = settings.dblCard;
+        document.getElementById('set-tpl-en').checked = settings.tplEn;
+        document.getElementById('set-tpl-card').value = settings.tplCard;
+        document.getElementById('set-quad-en').checked = settings.quadEn;
+        document.getElementById('set-quad-card').value = settings.quadCard;
+        document.getElementById('set-cap-en').checked = settings.capEn;
+        document.getElementById('set-cap-val').value = settings.capVal;
+    }
+
+    function saveSettings() {
+        settings.mode = document.getElementById('set-mode').value;
+        settings.dblEn = document.getElementById('set-dbl-en').checked;
+        settings.dblCard = parseInt(document.getElementById('set-dbl-card').value) || 8;
+        settings.tplEn = document.getElementById('set-tpl-en').checked;
+        settings.tplCard = parseInt(document.getElementById('set-tpl-card').value) || 10;
+        settings.quadEn = document.getElementById('set-quad-en').checked;
+        settings.quadCard = parseInt(document.getElementById('set-quad-card').value) || 13;
+        settings.capEn = document.getElementById('set-cap-en').checked;
+        settings.capVal = parseInt(document.getElementById('set-cap-val').value) || 13;
+        
+        localStorage.setItem('big2_sys_settings', JSON.stringify(settings));
+        closeSettings();
+        for (let i = 0; i < 4; i++) checkTag(i); 
+    }
+
+    function getPenalty(cards) {
+        if (cards === 0) return 0;
+        let mult = 1;
+        
+        if (settings.quadEn && cards >= settings.quadCard) mult = 4;
+        else if (settings.tplEn && cards >= settings.tplCard) mult = 3;
+        else if (settings.dblEn && cards >= settings.dblCard) mult = 2;
+        
+        let penalty = cards * mult;
+        
+        // 封頂計算邏輯
+        if (settings.capEn && penalty > settings.capVal) {
+            penalty = settings.capVal; 
+        }
+        
+        return penalty;
+    }
+
+    function syncNames(i) {
+        const newName = document.getElementById(`name${i}`).value || `玩家 ${i+1}`;
+        document.getElementById(`label${i}`).innerText = newName;
+        document.getElementById(`hist-name${i}`).innerText = newName;
+        localStorage.setItem(`big2_name_${i}`, newName);
+    }
+
+    function checkTag(i) {
+        let inputEl = document.getElementById(`p${i}`);
+        let val = parseInt(inputEl.value);
+        const tag = document.getElementById(`tag${i}`);
+        
+        // 防呆機制：如果輸入大於 13，強制變回 13
+        if (val > 13) {
+            val = 13;
+            inputEl.value = 13;
+        }
+
+        tag.className = "tag";
+        if (isNaN(val) || val === 0) return;
+
+        let mult = 1;
+        let tagText = "";
+        let tagClass = "";
+
+        if (settings.quadEn && val >= settings.quadCard) { mult = 4; tagText = "四炒"; tagClass = "quad"; }
+        else if (settings.tplEn && val >= settings.tplCard) { mult = 3; tagText = "三炒"; tagClass = "triple"; }
+        else if (settings.dblEn && val >= settings.dblCard) { mult = 2; tagText = "雙炒"; tagClass = "double"; }
+
+        let rawPenalty = val * mult;
+        
+        if (tagText !== "") {
+            tag.innerText = tagText;
+            tag.classList.add("active", tagClass);
+        }
+
+        // 如果觸發封頂，顯示封頂標籤
+        if (settings.capEn && rawPenalty > settings.capVal) {
+            tag.innerText = "封頂";
+            tag.className = "tag active cap-tag";
+        }
+    }
+
+    function submitRound() {
+        let cards = [];
+        let penalties = [];
+        let roundScores = [0, 0, 0, 0];
+        let winners = [];
+
+        for (let i = 0; i < 4; i++) {
+            let val = parseInt(document.getElementById(`p${i}`).value);
+            if (isNaN(val)) val = 0;
+            // 最後防線防呆
+            if (val > 13) val = 13; 
+            
+            cards.push(val);
+            penalties.push(getPenalty(val));
+            if (val === 0) winners.push(i);
+        }
+
+        if (winners.length !== 1) { alert("請確保只有「一位」贏家（剩餘張數為 0）"); return; }
+
+        let winnerIndex = winners[0];
+
+        if (settings.mode === 'standard') {
+            let sumLoss = 0;
+            for (let i = 0; i < 4; i++) {
+                if (i === winnerIndex) continue;
+                roundScores[i] = -penalties[i];
+                sumLoss += penalties[i];
+            }
+            roundScores[winnerIndex] = sumLoss;
+
+        } else if (settings.mode === 'pairwise') {
+            let totalPenalty = penalties.reduce((a, b) => a + b, 0);
+            for (let i = 0; i < 4; i++) {
+                roundScores[i] = totalPenalty - (penalties[i] * 4);
+            }
+        }
+
+        for (let i = 0; i < 4; i++) totals[i] += roundScores[i];
+
+        updateScoreDisplay();
+        localStorage.setItem('big2_totals', JSON.stringify(totals));
+        addHistory(roundScores);
+        
+        for (let i = 0; i < 4; i++) {
+            document.getElementById(`p${i}`).value = "";
+            checkTag(i);
+        }
+    }
+
+    function updateScoreDisplay() {
+        for (let i = 0; i < 4; i++) {
+            const el = document.getElementById(`total${i}`);
+            el.innerText = totals[i];
+            el.style.color = totals[i] >= 0 ? "var(--win)" : "var(--loss)";
+        }
+    }
+
+    function addHistory(scores) {
+        const box = document.getElementById("history-box");
+        const noHistory = document.getElementById("no-history");
+        if (noHistory) noHistory.remove();
+
+        const item = document.createElement("div");
+        item.className = "history-item";
+        scores.forEach(s => {
+            const span = document.createElement("span");
+            span.innerText = (s > 0 ? "+" : "") + s;
+            span.style.color = s > 0 ? "var(--win)" : (s < 0 ? "var(--loss)" : "#999");
+            item.appendChild(span);
+        });
+        box.prepend(item);
+        localStorage.setItem('big2_history', box.innerHTML);
+    }
+
+    function resetAll() {
+        if (!confirm("確定要清空所有分數和紀錄嗎？（人名將會保留）")) return;
+        totals = [0, 0, 0, 0];
+        updateScoreDisplay();
+        localStorage.setItem('big2_totals', JSON.stringify(totals));
+        
+        const box = document.getElementById("history-box");
+        box.innerHTML = '<div style="text-align:center; color:#999; padding: 15px;" id="no-history">尚未開始牌局</div>';
+        localStorage.removeItem('big2_history');
+    }
+</script>
+</body>
+</html>
