@@ -2,64 +2,114 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>頂級鋤大D計分器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <title>殿堂級鋤大D計分器</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #2c3e50; --win: #27ae60; --loss: #e74c3c; --bg: #f4f7f6; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 12px; color: var(--primary); }
+        :root { 
+            --win: #27ae60; --loss: #e74c3c; 
+            --bg: #f4f7f6; --card-bg: white; 
+            --text-main: #2c3e50; --text-muted: #7f8c8d; 
+            --border-color: #eee; --input-bg: white; 
+            --score-bg: #f8f9fa; --modal-bg: white;
+            --btn-setting-bg: #ecf0f1;
+            /* 針對全螢幕模式，預留 iPhone 頂部瀏海空間 */
+            --safe-top: env(safe-area-inset-top);
+        }
+        
+        body.dark-mode {
+            --win: #2ecc71; --loss: #ff7675;
+            --bg: #1a1a2e; --card-bg: #16213e; 
+            --text-main: #ecf0f1; --text-muted: #b2bec3; 
+            --border-color: #2c3e50; --input-bg: #0f3460;
+            --score-bg: #0f3460; --modal-bg: #16213e;
+            --btn-setting-bg: #0f3460;
+        }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 12px; padding-top: calc(12px + var(--safe-top)); color: var(--text-main); transition: background 0.3s; }
         .container { max-width: 500px; margin: auto; }
-        .card { background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); padding: 15px; margin-bottom: 15px; }
+        .card { background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 15px; margin-bottom: 15px; transition: background 0.3s; border: 1px solid var(--border-color); }
         
-        /* 標題與設定按鈕 */
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        h2 { margin: 0; font-size: 1.1rem; }
-        .btn-setting { background: #ecf0f1; border: none; border-radius: 8px; padding: 8px 12px; font-size: 18px; cursor: pointer; color: #333; box-shadow: 0 2px #bdc3c7; }
-        .btn-setting:active { transform: translateY(2px); box-shadow: 0 0px #bdc3c7; }
+        h2 { margin: 0; font-size: 1.1rem; color: var(--text-main); }
+        .game-counter { font-size: 0.85rem; color: var(--text-muted); font-weight: normal; margin-left: 5px; }
+        .btn-setting { background: var(--btn-setting-bg); border: none; border-radius: 8px; padding: 8px 10px; font-size: 16px; cursor: pointer; color: var(--text-main); box-shadow: 0 2px rgba(0,0,0,0.1); margin-left: 4px; }
+        .btn-setting:active { transform: translateY(2px); box-shadow: 0 0px rgba(0,0,0,0.1); }
 
-        h3 { font-size: 1rem; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-bottom: 15px; }
+        h3 { font-size: 1rem; margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-bottom: 15px; color: var(--text-main); }
         
-        /* 總分看板 */
         .scoreboard { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; text-align: center; }
-        .player-score { background: #f8f9fa; padding: 10px 4px; border-radius: 8px; border: 1px solid #e9ecef; }
-        .player-name-input { width: 100%; border: none; background: transparent; text-align: center; font-weight: bold; font-size: 14px; color: #333; border-bottom: 1.5px dashed #ccc; padding-bottom: 3px; box-sizing: border-box; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
-        .player-name-input:focus { outline: none; border-bottom: 1.5px solid var(--win); background: white; }
-        .score-val { font-size: 20px; display: block; margin-top: 8px; font-weight: 900; }
-
-        /* 輸入區 */
-        .input-row { display: grid; grid-template-columns: 1.2fr 1.5fr 1fr; align-items: center; gap: 8px; margin-bottom: 12px; }
-        .name-label { font-weight: bold; font-size: 14px; color: #34495e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; text-align: center; box-sizing: border-box; -webkit-appearance: none; }
+        .player-score { background: var(--score-bg); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; position: relative; }
         
-        /* 標籤 */
+        /* 👑 莊家皇冠標記 (已移除文字，稍微放大皇冠) */
+        .dealer-badge { font-size: 18px; margin-bottom: 4px; height: 20px; transition: opacity 0.3s, transform 0.3s; opacity: 0; transform: scale(0.5); }
+        .dealer-badge.active { opacity: 1; transform: scale(1); }
+
+        .player-name-input { width: 100%; border: none; background: transparent; text-align: center; font-weight: bold; font-size: 14px; color: var(--text-main); border-bottom: 1.5px dashed #ccc; padding-bottom: 3px; box-sizing: border-box; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+        .player-name-input:focus { outline: none; border-bottom: 1.5px solid var(--win); color: var(--text-main); }
+        .score-val { font-size: 20px; display: block; margin-top: 8px; margin-bottom: 5px; font-weight: 900; }
+        .win-count { font-size: 11px; color: var(--text-muted); background: var(--bg); border-radius: 10px; padding: 2px 0; margin: 0 5px; font-weight: bold; }
+
+        .input-row { display: grid; grid-template-columns: 1.2fr 1.5fr 1fr; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .name-label { font-weight: bold; font-size: 14px; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        input[type="number"] { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 16px; text-align: center; box-sizing: border-box; -webkit-appearance: none; background: var(--input-bg); color: var(--text-main); }
+        
         .tag { font-size: 12px; padding: 6px 4px; border-radius: 6px; text-align: center; color: white; font-weight: bold; opacity: 0; transition: opacity 0.2s ease-in-out; }
         .tag.active { opacity: 1; }
         .double { background: #f39c12; }
         .triple { background: #d35400; }
         .quad { background: #c0392b; }
-        .cap-tag { background: #8e44ad; } /* 封頂特別顏色 */
 
         button.main-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.1s; }
         .btn-calc { background: var(--win); color: white; margin-top: 5px; box-shadow: 0 4px #1e8449; }
         .btn-calc:active { box-shadow: 0 0px #1e8449; transform: translateY(4px); }
-        .btn-reset { background: #e74c3c; color: white; margin-top: 15px; font-size: 14px; padding: 10px; box-shadow: 0 3px #c0392b; }
+        
+        .btn-awards { background: #f1c40f; color: #d35400; margin-top: 15px; font-size: 16px; padding: 12px; box-shadow: 0 4px #f39c12; }
+        .btn-awards:active { box-shadow: 0 0px #f39c12; transform: translateY(4px); }
+
+        .btn-reset { background: var(--loss); color: white; margin-top: 10px; font-size: 14px; padding: 10px; box-shadow: 0 3px #c0392b; }
         .btn-reset:active { box-shadow: 0 0px #c0392b; transform: translateY(3px); }
 
-        /* 歷史紀錄 */
-        .history-container { border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
-        .history-header { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #f0f2f5; padding: 8px 4px; text-align: center; font-size: 12px; font-weight: bold; color: #555; border-bottom: 1px solid #ddd; }
-        .history-header span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .history { max-height: 200px; overflow-y: auto; background: white; }
-        .history-item { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); text-align: center; border-bottom: 1px solid #f9f9f9; padding: 10px 4px; font-size: 14px; font-weight: bold; }
+        .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .btn-undo { background: #f39c12; color: white; padding: 12px; border-radius: 10px; font-weight: bold; border: none; font-size: 15px; box-shadow: 0 3px #d35400; }
+        .btn-undo:active { transform: translateY(3px); box-shadow: 0 0px #d35400; }
+        .btn-shuffle { background: #8e44ad; color: white; padding: 12px; border-radius: 10px; font-weight: bold; border: none; font-size: 15px; box-shadow: 0 3px #732d91; }
+        .btn-shuffle:active { transform: translateY(3px); box-shadow: 0 0px #732d91; }
 
-        /* 設定彈出視窗 */
+        .history-container { border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
+        .history-header { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--score-bg); padding: 8px 4px; text-align: center; font-size: 12px; font-weight: bold; color: var(--text-muted); border-bottom: 1px solid var(--border-color); }
+        .history-header span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history { max-height: 200px; overflow-y: auto; background: var(--card-bg); }
+        .history-item { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); text-align: center; border-bottom: 1px solid var(--border-color); padding: 10px 4px; font-size: 14px; font-weight: bold; }
+
         .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; padding: 15px; box-sizing: border-box; backdrop-filter: blur(3px); }
-        .modal-content { background: white; width: 100%; max-width: 400px; border-radius: 15px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
-        .setting-group { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        .modal-content { background: var(--modal-bg); color: var(--text-main); width: 100%; max-width: 450px; border-radius: 15px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); position: relative; }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
+        .modal-header h2 { margin: 0; font-size: 1.3rem; }
+        .btn-close-icon { background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; padding: 0; }
+        
+        .setting-group { margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
         .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 15px; }
-        .setting-row input[type="number"] { width: 70px; padding: 6px; text-align: center; border: 1px solid #ccc; border-radius: 5px; }
+        .setting-row input[type="number"] { width: 70px; padding: 6px; }
         .setting-row input[type="checkbox"] { transform: scale(1.3); margin-right: 8px; }
-        .mode-select { width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid #ccc; font-size: 15px; background: #f9f9f9; }
-        .btn-close-modal { background: #95a5a6; color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .mode-select { width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 15px; background: var(--input-bg); color: var(--text-main); }
+        .btn-close-modal { background: var(--text-muted); color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        
+        .chart-container { position: relative; height: 300px; width: 100%; margin-bottom: 15px; }
+
+        .award-item { background: var(--score-bg); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 5px solid #ccc; display: flex; justify-content: space-between; align-items: center; }
+        .award-item.top { border-left-color: #f1c40f; }
+        .award-item.kills { border-left-color: #e74c3c; }
+        .award-item.worst { border-left-color: #34495e; }
+        .award-item.survivor { border-left-color: #3498db; }
+        .award-title { font-weight: bold; font-size: 1.1rem; }
+        .award-name { font-size: 1.2rem; font-weight: 900; }
+        .award-desc { font-size: 0.9rem; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -67,14 +117,30 @@
 <div class="container">
     <div class="card">
         <div class="header-row">
-            <h2>📊 實時積分 (點名改名)</h2>
-            <button class="btn-setting" onclick="openSettings()">⚙️</button>
+            <h2>📊 實時積分 <span id="game-counter" class="game-counter">(第 0 局)</span></h2>
+            <div>
+                <button class="btn-setting" onclick="openChart()">📈</button>
+                <button class="btn-setting" id="theme-btn" onclick="toggleTheme()">🌙</button>
+                <button class="btn-setting" onclick="openSettings()">⚙️</button>
+            </div>
         </div>
         <div class="scoreboard">
-            <div class="player-score"><input type="text" id="name0" class="player-name-input" value="玩家 A" maxlength="6" oninput="syncNames(0)" onclick="this.select()"><span class="score-val" id="total0">0</span></div>
-            <div class="player-score"><input type="text" id="name1" class="player-name-input" value="玩家 B" maxlength="6" oninput="syncNames(1)" onclick="this.select()"><span class="score-val" id="total1">0</span></div>
-            <div class="player-score"><input type="text" id="name2" class="player-name-input" value="玩家 C" maxlength="6" oninput="syncNames(2)" onclick="this.select()"><span class="score-val" id="total2">0</span></div>
-            <div class="player-score"><input type="text" id="name3" class="player-name-input" value="玩家 D" maxlength="6" oninput="syncNames(3)" onclick="this.select()"><span class="score-val" id="total3">0</span></div>
+            <div class="player-score">
+                <div class="dealer-badge" id="dealer0">👑</div>
+                <input type="text" id="name0" class="player-name-input" value="玩家 A" maxlength="6" oninput="syncNames(0)" onclick="this.select()"><span class="score-val" id="total0">0</span><div class="win-count" id="win0">勝: 0</div>
+            </div>
+            <div class="player-score">
+                <div class="dealer-badge" id="dealer1">👑</div>
+                <input type="text" id="name1" class="player-name-input" value="玩家 B" maxlength="6" oninput="syncNames(1)" onclick="this.select()"><span class="score-val" id="total1">0</span><div class="win-count" id="win1">勝: 0</div>
+            </div>
+            <div class="player-score">
+                <div class="dealer-badge" id="dealer2">👑</div>
+                <input type="text" id="name2" class="player-name-input" value="玩家 C" maxlength="6" oninput="syncNames(2)" onclick="this.select()"><span class="score-val" id="total2">0</span><div class="win-count" id="win2">勝: 0</div>
+            </div>
+            <div class="player-score">
+                <div class="dealer-badge" id="dealer3">👑</div>
+                <input type="text" id="name3" class="player-name-input" value="玩家 D" maxlength="6" oninput="syncNames(3)" onclick="this.select()"><span class="score-val" id="total3">0</span><div class="win-count" id="win3">勝: 0</div>
+            </div>
         </div>
     </div>
 
@@ -87,270 +153,294 @@
             <div class="input-row"><div class="name-label" id="label3">玩家 D</div><input type="number" id="p3" placeholder="0" min="0" max="13" oninput="checkTag(3)"><div id="tag3" class="tag"></div></div>
         </div>
         <button class="main-btn btn-calc" onclick="submitRound()">結算此局</button>
+        
+        <div class="action-row">
+            <button class="btn-undo" onclick="undoLast()">↩️ 復原上一步</button>
+            <button class="btn-shuffle" onclick="randomShuffle()">🎲 抽籤洗牌</button>
+        </div>
     </div>
 
     <div class="card">
         <h3>📜 最近紀錄</h3>
         <div class="history-container">
-            <div class="history-header">
-                <span id="hist-name0">玩家 A</span><span id="hist-name1">玩家 B</span><span id="hist-name2">玩家 C</span><span id="hist-name3">玩家 D</span>
-            </div>
-            <div class="history" id="history-box"><div style="text-align:center; color:#999; padding: 15px;" id="no-history">尚未開始牌局</div></div>
+            <div class="history-header"><span id="hist-name0">玩家 A</span><span id="hist-name1">玩家 B</span><span id="hist-name2">玩家 C</span><span id="hist-name3">玩家 D</span></div>
+            <div class="history" id="history-box"><div style="text-align:center; color:var(--text-muted); padding: 15px;" id="no-history">尚未開始牌局</div></div>
         </div>
-        <button class="main-btn btn-reset" onclick="resetAll()">⚠️ 清空所有數據</button>
+        
+        <button class="main-btn btn-awards" onclick="openAwards()">🏆 賽後頒獎台 (完局總結)</button>
+        <button class="main-btn btn-reset" onclick="resetAll()">⚠️ 直接清空數據</button>
     </div>
 </div>
 
-<div id="settings-modal" class="modal-overlay">
-    <div class="modal-content">
-        <h2 style="margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">⚙️ 遊戲設定</h2>
-        
+<div id="awards-modal" class="modal-overlay" onclick="closeAwards()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>🏆 今晚賽後總結</h2>
+            <button class="btn-close-icon" onclick="closeAwards()">✖</button>
+        </div>
+        <div id="awards-content"></div>
+        <button class="main-btn btn-calc" onclick="resetAllFromAwards()" style="margin-top: 20px;">🔄 儲存回憶並清空數據</button>
+    </div>
+</div>
+
+<div id="chart-modal" class="modal-overlay" onclick="closeChart()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>📈 戰況走勢圖</h2>
+            <button class="btn-close-icon" onclick="closeChart()">✖</button>
+        </div>
+        <div class="chart-container"><canvas id="scoreChart"></canvas></div>
+        <button class="btn-close-modal" onclick="closeChart()">關閉</button>
+    </div>
+</div>
+
+<div id="settings-modal" class="modal-overlay" onclick="closeSettings()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>⚙️ 遊戲設定</h2>
+            <button class="btn-close-icon" onclick="closeSettings()">✖</button>
+        </div>
         <div class="setting-group">
-            <label style="font-weight: bold; color: var(--primary);">🎯 計分模式</label>
+            <label style="font-weight: bold;">🎯 計分模式</label>
             <select id="set-mode" class="mode-select">
                 <option value="standard">一家贏三家 (贏家全取)</option>
                 <option value="pairwise">位位計 / 贏位計 (逐家計差額)</option>
             </select>
-            <div style="font-size:12px; color:#7f8c8d; margin-top:5px;">*位位計自動幫你計好各家差額對消，唔使再心算！</div>
         </div>
-
         <div class="setting-group">
-            <label style="font-weight: bold; color: var(--primary); display:block; margin-bottom:10px;">🔥 炒牌門檻 (開關及張數)</label>
-            <div class="setting-row">
-                <label><input type="checkbox" id="set-dbl-en"> 雙炒 (x2)</label>
-                <span>≥ <input type="number" id="set-dbl-card" min="1" max="13"> 張</span>
-            </div>
-            <div class="setting-row">
-                <label><input type="checkbox" id="set-tpl-en"> 三炒 (x3)</label>
-                <span>≥ <input type="number" id="set-tpl-card" min="1" max="13"> 張</span>
-            </div>
-            <div class="setting-row">
-                <label><input type="checkbox" id="set-quad-en"> 四炒 (x4)</label>
-                <span>≥ <input type="number" id="set-quad-card" min="1" max="13"> 張</span>
-            </div>
+            <label style="font-weight: bold; display:block; margin-bottom:10px;">🔥 炒牌門檻 (開關及張數)</label>
+            <div class="setting-row"><label><input type="checkbox" id="set-dbl-en"> 雙炒 (x2)</label><span>≥ <input type="number" id="set-dbl-card" min="1" max="13"> 張</span></div>
+            <div class="setting-row"><label><input type="checkbox" id="set-tpl-en"> 三炒 (x3)</label><span>≥ <input type="number" id="set-tpl-card" min="1" max="13"> 張</span></div>
+            <div class="setting-row"><label><input type="checkbox" id="set-quad-en"> 四炒 (x4)</label><span>≥ <input type="number" id="set-quad-card" min="1" max="13"> 張</span></div>
         </div>
-
-        <div class="setting-group">
-            <label style="font-weight: bold; color: var(--primary); display:block; margin-bottom:10px;">🛑 封頂限制</label>
-            <div class="setting-row">
-                <label><input type="checkbox" id="set-cap-en"> 啟用封頂</label>
-                <span>最多輸 <input type="number" id="set-cap-val" min="1" max="100"> 分</span>
-            </div>
-            <div style="font-size:12px; color:#7f8c8d; margin-top:5px;">*就算中咗四炒，輸嘅分數都唔會超過呢個數值。</div>
-        </div>
-
         <button class="main-btn btn-calc" onclick="saveSettings()">儲存設定</button>
-        <button class="btn-close-modal" onclick="closeSettings()">取消</button>
     </div>
 </div>
 
 <script>
-    let totals = [0, 0, 0, 0];
+    let totals = [0, 0, 0, 0]; let totalGames = 0; let winCounts = [0, 0, 0, 0];
+    let undoStack = []; let scoreHistory = [[0, 0, 0, 0]]; let myChart = null; 
+    let lastWinner = -1; 
     
-    // 預設設定檔
-    let settings = {
-        mode: 'standard', 
-        dblEn: true, dblCard: 8,
-        tplEn: true, tplCard: 10,
-        quadEn: true, quadCard: 13,
-        capEn: true, capVal: 13 // 預設開啟封頂，最多輸13分
-    };
+    let settings = { mode: 'standard', dblEn: true, dblCard: 8, tplEn: true, tplCard: 10, quadEn: true, quadCard: 13 };
+
+    /* --- 🔊 內建合成音效系統 --- */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playTone(freq, type, duration, vol=0.1) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+    function playWinSound() { playTone(523.25, 'sine', 0.1); setTimeout(() => playTone(659.25, 'sine', 0.2), 100); }
+    function playBoomSound() { playTone(150, 'square', 0.4, 0.2); setTimeout(() => playTone(100, 'sawtooth', 0.5, 0.2), 100); if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }
+    function playTadaSound() { playTone(440, 'triangle', 0.1); setTimeout(() => playTone(440, 'triangle', 0.1), 150); setTimeout(() => playTone(587.33, 'triangle', 0.4), 300); if(navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500]); }
 
     window.onload = function() {
-        const savedScores = localStorage.getItem('big2_totals');
-        if (savedScores) totals = JSON.parse(savedScores);
-        updateScoreDisplay();
+        if (localStorage.getItem('big2_theme') === 'dark') { document.body.classList.add('dark-mode'); document.getElementById('theme-btn').innerText = '☀️'; }
+        
+        const savedScores = localStorage.getItem('big2_totals'); if (savedScores) totals = JSON.parse(savedScores);
+        const savedGames = localStorage.getItem('big2_games'); if (savedGames) totalGames = parseInt(savedGames);
+        const savedWins = localStorage.getItem('big2_wins'); if (savedWins) winCounts = JSON.parse(savedWins);
+        const savedStack = localStorage.getItem('big2_undo_stack'); if (savedStack) undoStack = JSON.parse(savedStack);
+        const savedHistoryArray = localStorage.getItem('big2_score_history'); if (savedHistoryArray) scoreHistory = JSON.parse(savedHistoryArray);
+        const savedDealer = localStorage.getItem('big2_last_winner'); if (savedDealer !== null) lastWinner = parseInt(savedDealer);
+        
+        updateScoreDisplay(); updateGameStatsDisplay(); updateDealerDisplay();
         
         for (let i = 0; i < 4; i++) {
             const savedName = localStorage.getItem(`big2_name_${i}`);
-            if (savedName) {
-                document.getElementById(`name${i}`).value = savedName;
-                document.getElementById(`label${i}`).innerText = savedName;
-                document.getElementById(`hist-name${i}`).innerText = savedName;
-            }
+            if (savedName) { document.getElementById(`name${i}`).value = savedName; document.getElementById(`label${i}`).innerText = savedName; document.getElementById(`hist-name${i}`).innerText = savedName; }
         }
-        const savedHistory = localStorage.getItem('big2_history');
-        if (savedHistory) document.getElementById('history-box').innerHTML = savedHistory;
-
-        const savedSettings = localStorage.getItem('big2_sys_settings');
-        if (savedSettings) settings = JSON.parse(savedSettings);
-        applySettingsToUI();
+        const savedHistory = localStorage.getItem('big2_history'); if (savedHistory) document.getElementById('history-box').innerHTML = savedHistory;
+        const savedSettings = localStorage.getItem('big2_sys_settings'); if (savedSettings) settings = JSON.parse(savedSettings); applySettingsToUI();
+        
+        document.body.addEventListener('click', () => { if(audioCtx.state === 'suspended') audioCtx.resume(); }, {once:true});
     };
+
+    function updateDealerDisplay() {
+        for (let i = 0; i < 4; i++) {
+            const badge = document.getElementById(`dealer${i}`);
+            if (i === lastWinner) { badge.classList.add('active'); } 
+            else { badge.classList.remove('active'); }
+        }
+    }
+
+    function openAwards() {
+        if (totalGames === 0) { alert("都未開局，頒咩獎呀！"); return; }
+        const players = [document.getElementById('name0').value||'A', document.getElementById('name1').value||'B', document.getElementById('name2').value||'C', document.getElementById('name3').value||'D'];
+        let maxScore = Math.max(...totals); let minScore = Math.min(...totals); let maxWins = Math.max(...winCounts);
+        let winnerIdx = totals.indexOf(maxScore); let loserIdx = totals.indexOf(minScore); let mostWinsIdx = winCounts.indexOf(maxWins);
+        let closestToZeroIdx = -1; let minAbs = Infinity;
+        for (let i=0; i<4; i++) { if (i !== winnerIdx && Math.abs(totals[i]) < minAbs) { minAbs = Math.abs(totals[i]); closestToZeroIdx = i; } }
+
+        const content = `
+            <div class="award-item top"><div><div class="award-title">🥇 賭神 (大贏家)</div><div class="award-desc">贏得最多分數</div></div><div class="award-name" style="color:var(--win)">${players[winnerIdx]}<br><span style="font-size:0.8rem">+${maxScore} 分</span></div></div>
+            <div class="award-item kills"><div><div class="award-title">🎯 食糊王</div><div class="award-desc">贏牌鋪數最多</div></div><div class="award-name">${players[mostWinsIdx]}<br><span style="font-size:0.8rem">${maxWins} 勝</span></div></div>
+            <div class="award-item worst"><div><div class="award-title">💩 地獄黑仔王</div><div class="award-desc">輸得最甘嗰個</div></div><div class="award-name" style="color:var(--loss)">${players[loserIdx]}<br><span style="font-size:0.8rem">${minScore} 分</span></div></div>
+            <div class="award-item survivor"><div><div class="award-title">🛡️ 算死草</div><div class="award-desc">最保守 / 上落最細</div></div><div class="award-name">${players[closestToZeroIdx]}<br><span style="font-size:0.8rem">${totals[closestToZeroIdx]} 分</span></div></div>
+        `;
+        document.getElementById('awards-content').innerHTML = content; document.getElementById('awards-modal').style.display = 'flex'; playTadaSound();
+    }
+    function closeAwards() { document.getElementById('awards-modal').style.display = 'none'; }
+    function resetAllFromAwards() { closeAwards(); resetAll(true); } 
+
+    function openChart() {
+        document.getElementById('chart-modal').style.display = 'flex';
+        const ctx = document.getElementById('scoreChart').getContext('2d');
+        const isDark = document.body.classList.contains('dark-mode');
+        const textColor = isDark ? '#ecf0f1' : '#2c3e50'; const gridColor = isDark ? '#2c3e50' : '#e0e0e0';
+        const playerNames = [document.getElementById('name0').value||'A', document.getElementById('name1').value||'B', document.getElementById('name2').value||'C', document.getElementById('name3').value||'D'];
+        const lineColors = ['#3498db', '#e74c3c', '#f1c40f', '#2ecc71']; 
+        const labels = scoreHistory.map((_, index) => index === 0 ? '起點' : `第${index}鋪`);
+        const datasets = playerNames.map((name, i) => ({ label: name, data: scoreHistory.map(historyRecord => historyRecord[i]), borderColor: lineColors[i], backgroundColor: lineColors[i], borderWidth: 3, pointRadius: 4, tension: 0.2 }));
+        if (myChart) myChart.destroy();
+        Chart.defaults.color = textColor;
+        myChart = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: gridColor } }, x: { grid: { color: gridColor } } }, plugins: { legend: { position: 'top', labels: { font: { weight: 'bold' } } } } } });
+    }
+    function closeChart() { document.getElementById('chart-modal').style.display = 'none'; }
+
+    function toggleTheme() {
+        const body = document.body; const btn = document.getElementById('theme-btn'); body.classList.toggle('dark-mode');
+        if (body.classList.contains('dark-mode')) { btn.innerText = '☀️'; localStorage.setItem('big2_theme', 'dark'); } 
+        else { btn.innerText = '🌙'; localStorage.setItem('big2_theme', 'light'); }
+    }
+
+    function randomShuffle() {
+        let players = []; for (let i = 0; i < 4; i++) players.push(document.getElementById(`name${i}`).value || `玩家 ${i+1}`);
+        alert(`🎲 抽籤結果公佈 🎲\n\n今鋪由【 ${players[Math.floor(Math.random() * players.length)]} 】負責洗牌同派牌！`);
+    }
+
+    function saveStateForUndo() {
+        undoStack.push({ 
+            totals: [...totals], totalGames: totalGames, winCounts: [...winCounts], 
+            historyHTML: document.getElementById('history-box').innerHTML, 
+            scoreHistory: JSON.parse(JSON.stringify(scoreHistory)),
+            lastWinner: lastWinner 
+        });
+        if (undoStack.length > 20) undoStack.shift(); localStorage.setItem('big2_undo_stack', JSON.stringify(undoStack));
+    }
+
+    function undoLast() {
+        if (undoStack.length === 0) { alert("⚠️ 冇得再復原啦！"); return; }
+        const lastState = undoStack.pop();
+        totals = lastState.totals; totalGames = lastState.totalGames; winCounts = lastState.winCounts; scoreHistory = lastState.scoreHistory; lastWinner = lastState.lastWinner;
+        document.getElementById('history-box').innerHTML = lastState.historyHTML;
+        
+        updateScoreDisplay(); updateGameStatsDisplay(); updateDealerDisplay(); 
+        
+        localStorage.setItem('big2_totals', JSON.stringify(totals)); localStorage.setItem('big2_games', totalGames); localStorage.setItem('big2_wins', JSON.stringify(winCounts)); localStorage.setItem('big2_history', lastState.historyHTML); localStorage.setItem('big2_undo_stack', JSON.stringify(undoStack)); localStorage.setItem('big2_score_history', JSON.stringify(scoreHistory)); localStorage.setItem('big2_last_winner', lastWinner);
+    }
 
     function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; applySettingsToUI(); }
     function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
-    
-    function applySettingsToUI() {
-        document.getElementById('set-mode').value = settings.mode;
-        document.getElementById('set-dbl-en').checked = settings.dblEn;
-        document.getElementById('set-dbl-card').value = settings.dblCard;
-        document.getElementById('set-tpl-en').checked = settings.tplEn;
-        document.getElementById('set-tpl-card').value = settings.tplCard;
-        document.getElementById('set-quad-en').checked = settings.quadEn;
-        document.getElementById('set-quad-card').value = settings.quadCard;
-        document.getElementById('set-cap-en').checked = settings.capEn;
-        document.getElementById('set-cap-val').value = settings.capVal;
-    }
-
+    function applySettingsToUI() { document.getElementById('set-mode').value = settings.mode; document.getElementById('set-dbl-en').checked = settings.dblEn; document.getElementById('set-dbl-card').value = settings.dblCard; document.getElementById('set-tpl-en').checked = settings.tplEn; document.getElementById('set-tpl-card').value = settings.tplCard; document.getElementById('set-quad-en').checked = settings.quadEn; document.getElementById('set-quad-card').value = settings.quadCard; }
     function saveSettings() {
-        settings.mode = document.getElementById('set-mode').value;
-        settings.dblEn = document.getElementById('set-dbl-en').checked;
-        settings.dblCard = parseInt(document.getElementById('set-dbl-card').value) || 8;
-        settings.tplEn = document.getElementById('set-tpl-en').checked;
-        settings.tplCard = parseInt(document.getElementById('set-tpl-card').value) || 10;
-        settings.quadEn = document.getElementById('set-quad-en').checked;
-        settings.quadCard = parseInt(document.getElementById('set-quad-card').value) || 13;
-        settings.capEn = document.getElementById('set-cap-en').checked;
-        settings.capVal = parseInt(document.getElementById('set-cap-val').value) || 13;
-        
-        localStorage.setItem('big2_sys_settings', JSON.stringify(settings));
-        closeSettings();
-        for (let i = 0; i < 4; i++) checkTag(i); 
-    }
-
-    function getPenalty(cards) {
-        if (cards === 0) return 0;
-        let mult = 1;
-        
-        if (settings.quadEn && cards >= settings.quadCard) mult = 4;
-        else if (settings.tplEn && cards >= settings.tplCard) mult = 3;
-        else if (settings.dblEn && cards >= settings.dblCard) mult = 2;
-        
-        let penalty = cards * mult;
-        
-        // 封頂計算邏輯
-        if (settings.capEn && penalty > settings.capVal) {
-            penalty = settings.capVal; 
-        }
-        
-        return penalty;
+        settings.mode = document.getElementById('set-mode').value; settings.dblEn = document.getElementById('set-dbl-en').checked; settings.dblCard = parseInt(document.getElementById('set-dbl-card').value) || 8; settings.tplEn = document.getElementById('set-tpl-en').checked; settings.tplCard = parseInt(document.getElementById('set-tpl-card').value) || 10; settings.quadEn = document.getElementById('set-quad-en').checked; settings.quadCard = parseInt(document.getElementById('set-quad-card').value) || 13;
+        localStorage.setItem('big2_sys_settings', JSON.stringify(settings)); closeSettings(); for (let i = 0; i < 4; i++) checkTag(i);
     }
 
     function syncNames(i) {
-        const newName = document.getElementById(`name${i}`).value || `玩家 ${i+1}`;
-        document.getElementById(`label${i}`).innerText = newName;
-        document.getElementById(`hist-name${i}`).innerText = newName;
-        localStorage.setItem(`big2_name_${i}`, newName);
+        const newName = document.getElementById(`name${i}`).value || `玩家 ${i+1}`; document.getElementById(`label${i}`).innerText = newName; document.getElementById(`hist-name${i}`).innerText = newName; localStorage.setItem(`big2_name_${i}`, newName);
+        if (myChart && document.getElementById('chart-modal').style.display === 'flex') openChart(); 
     }
 
     function checkTag(i) {
-        let inputEl = document.getElementById(`p${i}`);
-        let val = parseInt(inputEl.value);
-        const tag = document.getElementById(`tag${i}`);
-        
-        // 防呆機制：如果輸入大於 13，強制變回 13
-        if (val > 13) {
-            val = 13;
-            inputEl.value = 13;
-        }
-
-        tag.className = "tag";
+        const inputEl = document.getElementById(`p${i}`); let val = parseInt(inputEl.value);
+        if (val > 13) { val = 13; inputEl.value = 13; } if (val < 0) { val = 0; inputEl.value = 0; }
+        const tag = document.getElementById(`tag${i}`); tag.className = "tag";
         if (isNaN(val) || val === 0) return;
+        if (settings.quadEn && val >= settings.quadCard) { tag.innerText = "四炒"; tag.classList.add("active", "quad"); }
+        else if (settings.tplEn && val >= settings.tplCard) { tag.innerText = "三炒"; tag.classList.add("active", "triple"); }
+        else if (settings.dblEn && val >= settings.dblCard) { tag.innerText = "雙炒"; tag.classList.add("active", "double"); }
+    }
 
-        let mult = 1;
-        let tagText = "";
-        let tagClass = "";
-
-        if (settings.quadEn && val >= settings.quadCard) { mult = 4; tagText = "四炒"; tagClass = "quad"; }
-        else if (settings.tplEn && val >= settings.tplCard) { mult = 3; tagText = "三炒"; tagClass = "triple"; }
-        else if (settings.dblEn && val >= settings.dblCard) { mult = 2; tagText = "雙炒"; tagClass = "double"; }
-
-        let rawPenalty = val * mult;
-        
-        if (tagText !== "") {
-            tag.innerText = tagText;
-            tag.classList.add("active", tagClass);
-        }
-
-        // 如果觸發封頂，顯示封頂標籤
-        if (settings.capEn && rawPenalty > settings.capVal) {
-            tag.innerText = "封頂";
-            tag.className = "tag active cap-tag";
-        }
+    function getPenalty(cards) {
+        if (cards === 0) return 0; let mult = 1;
+        if (settings.quadEn && cards >= settings.quadCard) mult = 4;
+        else if (settings.tplEn && cards >= settings.tplCard) mult = 3;
+        else if (settings.dblEn && cards >= settings.dblCard) mult = 2;
+        return { score: cards * mult, isBoom: mult > 1 }; 
     }
 
     function submitRound() {
-        let cards = [];
-        let penalties = [];
-        let roundScores = [0, 0, 0, 0];
-        let winners = [];
-
+        let cards = []; let penalties = []; let roundScores = [0, 0, 0, 0]; let winners = []; let hasBoom = false;
+        
         for (let i = 0; i < 4; i++) {
             let val = parseInt(document.getElementById(`p${i}`).value);
-            if (isNaN(val)) val = 0;
-            // 最後防線防呆
-            if (val > 13) val = 13; 
-            
-            cards.push(val);
-            penalties.push(getPenalty(val));
+            if (isNaN(val)) val = 0; 
+            if (val < 0 || val > 13) { alert("張數必須喺 0 到 13 之間！"); return; }
+            let penRes = getPenalty(val);
+            if(penRes.isBoom) hasBoom = true; 
+            cards.push(val); penalties.push(penRes.score);
             if (val === 0) winners.push(i);
         }
-
         if (winners.length !== 1) { alert("請確保只有「一位」贏家（剩餘張數為 0）"); return; }
+        
+        if(hasBoom) playBoomSound(); else playWinSound();
+
+        saveStateForUndo(); 
 
         let winnerIndex = winners[0];
-
+        lastWinner = winnerIndex; 
+        
         if (settings.mode === 'standard') {
             let sumLoss = 0;
-            for (let i = 0; i < 4; i++) {
-                if (i === winnerIndex) continue;
-                roundScores[i] = -penalties[i];
-                sumLoss += penalties[i];
-            }
+            for (let i = 0; i < 4; i++) { if (i === winnerIndex) continue; roundScores[i] = -penalties[i]; sumLoss += penalties[i]; }
             roundScores[winnerIndex] = sumLoss;
-
         } else if (settings.mode === 'pairwise') {
             let totalPenalty = penalties.reduce((a, b) => a + b, 0);
-            for (let i = 0; i < 4; i++) {
-                roundScores[i] = totalPenalty - (penalties[i] * 4);
-            }
+            for (let i = 0; i < 4; i++) roundScores[i] = totalPenalty - (penalties[i] * 4);
         }
 
         for (let i = 0; i < 4; i++) totals[i] += roundScores[i];
+        totalGames++; winCounts[winnerIndex]++;
+        scoreHistory.push([...totals]); 
 
-        updateScoreDisplay();
-        localStorage.setItem('big2_totals', JSON.stringify(totals));
-        addHistory(roundScores);
+        updateScoreDisplay(); updateGameStatsDisplay(); updateDealerDisplay(); 
         
-        for (let i = 0; i < 4; i++) {
-            document.getElementById(`p${i}`).value = "";
-            checkTag(i);
-        }
+        localStorage.setItem('big2_totals', JSON.stringify(totals)); localStorage.setItem('big2_games', totalGames); localStorage.setItem('big2_wins', JSON.stringify(winCounts));
+        localStorage.setItem('big2_score_history', JSON.stringify(scoreHistory)); localStorage.setItem('big2_last_winner', lastWinner);
+        addHistory(roundScores);
+        for (let i = 0; i < 4; i++) { document.getElementById(`p${i}`).value = ""; checkTag(i); }
     }
 
     function updateScoreDisplay() {
         for (let i = 0; i < 4; i++) {
-            const el = document.getElementById(`total${i}`);
-            el.innerText = totals[i];
+            const el = document.getElementById(`total${i}`); el.innerText = totals[i];
             el.style.color = totals[i] >= 0 ? "var(--win)" : "var(--loss)";
         }
+    }
+    
+    function updateGameStatsDisplay() {
+        document.getElementById('game-counter').innerText = `(第 ${totalGames} 局)`;
+        for (let i = 0; i < 4; i++) document.getElementById(`win${i}`).innerText = `勝: ${winCounts[i]}`;
     }
 
     function addHistory(scores) {
         const box = document.getElementById("history-box");
-        const noHistory = document.getElementById("no-history");
-        if (noHistory) noHistory.remove();
-
-        const item = document.createElement("div");
-        item.className = "history-item";
+        const noHistory = document.getElementById("no-history"); if (noHistory) noHistory.remove();
+        const item = document.createElement("div"); item.className = "history-item";
         scores.forEach(s => {
-            const span = document.createElement("span");
-            span.innerText = (s > 0 ? "+" : "") + s;
-            span.style.color = s > 0 ? "var(--win)" : (s < 0 ? "var(--loss)" : "#999");
+            const span = document.createElement("span"); span.innerText = (s > 0 ? "+" : "") + s;
+            span.style.color = s > 0 ? "var(--win)" : (s < 0 ? "var(--loss)" : "var(--text-muted)");
             item.appendChild(span);
         });
-        box.prepend(item);
-        localStorage.setItem('big2_history', box.innerHTML);
+        box.prepend(item); localStorage.setItem('big2_history', box.innerHTML);
     }
 
-    function resetAll() {
-        if (!confirm("確定要清空所有分數和紀錄嗎？（人名將會保留）")) return;
-        totals = [0, 0, 0, 0];
-        updateScoreDisplay();
-        localStorage.setItem('big2_totals', JSON.stringify(totals));
-        
+    function resetAll(skipConfirm = false) {
+        if (!skipConfirm && !confirm("確定要清空所有分數同紀錄嗎？")) return;
+        saveStateForUndo(); 
+        totals = [0, 0, 0, 0]; totalGames = 0; winCounts = [0, 0, 0, 0]; scoreHistory = [[0, 0, 0, 0]]; lastWinner = -1;
+        updateScoreDisplay(); updateGameStatsDisplay(); updateDealerDisplay();
+        localStorage.setItem('big2_totals', JSON.stringify(totals)); localStorage.setItem('big2_games', totalGames); localStorage.setItem('big2_wins', JSON.stringify(winCounts));
+        localStorage.setItem('big2_score_history', JSON.stringify(scoreHistory)); localStorage.setItem('big2_last_winner', lastWinner);
         const box = document.getElementById("history-box");
-        box.innerHTML = '<div style="text-align:center; color:#999; padding: 15px;" id="no-history">尚未開始牌局</div>';
+        box.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding: 15px;" id="no-history">尚未開始牌局</div>`;
         localStorage.removeItem('big2_history');
     }
 </script>
