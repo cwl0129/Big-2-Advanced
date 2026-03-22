@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
     
-    <title>鋤大D計分器</title>
+    <title>殿堂級鋤大D計分器</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { 
@@ -17,7 +17,6 @@
             --border-color: #eee; --input-bg: white; 
             --score-bg: #f8f9fa; --modal-bg: white;
             --btn-setting-bg: #ecf0f1;
-            /* 針對全螢幕模式，預留 iPhone 頂部瀏海空間 */
             --safe-top: env(safe-area-inset-top);
         }
         
@@ -45,7 +44,6 @@
         .scoreboard { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; text-align: center; }
         .player-score { background: var(--score-bg); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; position: relative; }
         
-        /* 👑 莊家皇冠標記 (已移除文字，稍微放大皇冠) */
         .dealer-badge { font-size: 18px; margin-bottom: 4px; height: 20px; transition: opacity 0.3s, transform 0.3s; opacity: 0; transform: scale(0.5); }
         .dealer-badge.active { opacity: 1; transform: scale(1); }
 
@@ -224,7 +222,6 @@
     
     let settings = { mode: 'standard', dblEn: true, dblCard: 8, tplEn: true, tplCard: 10, quadEn: true, quadCard: 13 };
 
-    /* --- 🔊 內建合成音效系統 --- */
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playTone(freq, type, duration, vol=0.1) {
         if(audioCtx.state === 'suspended') audioCtx.resume();
@@ -358,8 +355,10 @@
         else if (settings.dblEn && val >= settings.dblCard) { tag.innerText = "雙炒"; tag.classList.add("active", "double"); }
     }
 
+    /* ⚠️ 修正：處理 0 張牌時回傳正確格式，避免 NaN 錯誤！ */
     function getPenalty(cards) {
-        if (cards === 0) return 0; let mult = 1;
+        if (cards === 0) return { score: 0, isBoom: false }; 
+        let mult = 1;
         if (settings.quadEn && cards >= settings.quadCard) mult = 4;
         else if (settings.tplEn && cards >= settings.tplCard) mult = 3;
         else if (settings.dblEn && cards >= settings.dblCard) mult = 2;
