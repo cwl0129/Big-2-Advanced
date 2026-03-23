@@ -17,6 +17,7 @@
             --border-color: #eee; --input-bg: white; 
             --score-bg: #f8f9fa; --modal-bg: white;
             --btn-setting-bg: #ecf0f1;
+            /* 針對全螢幕模式，預留 iPhone 頂部瀏海空間 */
             --safe-top: env(safe-area-inset-top);
         }
         
@@ -44,6 +45,7 @@
         .scoreboard { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; text-align: center; }
         .player-score { background: var(--score-bg); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; position: relative; }
         
+        /* 👑 莊家皇冠標記 */
         .dealer-badge { font-size: 18px; margin-bottom: 4px; height: 20px; transition: opacity 0.3s, transform 0.3s; opacity: 0; transform: scale(0.5); }
         .dealer-badge.active { opacity: 1; transform: scale(1); }
 
@@ -62,6 +64,7 @@
         .triple { background: #d35400; }
         .quad { background: #c0392b; }
 
+        /* 包底選項樣式 */
         .baodi-select { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 2px solid #f39c12; font-size: 15px; background: #fff8e1; color: #d35400; font-weight: bold; }
         body.dark-mode .baodi-select { background: #4a2311; border-color: #e67e22; color: #f39c12; }
 
@@ -233,6 +236,7 @@
     let lastWinner = -1; 
     let settings = { mode: 'standard', dblEn: true, dblCard: 10, tplEn: true, tplCard: 13, quadEn: false, quadCard: 13 };
 
+    /* --- 🔊 音效合成引擎 (Web Audio API) --- */
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
     function playTone(freq, type, duration, vol=0.1) {
@@ -245,79 +249,70 @@
         osc.start(); osc.stop(audioCtx.currentTime + duration);
     }
     
+    // 1️⃣ 正常贏牌金幣聲
     function playWinSound() { playTone(523.25, 'sine', 0.1, 0.1); setTimeout(() => playTone(659.25, 'sine', 0.2, 0.1), 100); }
     
-    /* 🍄 超級馬利奧 Game Over 音效合成！ */
+    // 2️⃣ 正常被炒：馬利奧 Game Over 死咗聲
     function playMarioDeathSound() {
         if(audioCtx.state === 'suspended') audioCtx.resume();
-        
         const notes = [
-            {f: 493.88, d: 0.12, t: 0},     // B4
-            {f: 698.46, d: 0.25, t: 0.15},  // F5
-            {f: 698.46, d: 0.12, t: 0.45},  // F5
-            {f: 698.46, d: 0.12, t: 0.60},  // F5
-            {f: 659.25, d: 0.12, t: 0.75},  // E5
-            {f: 587.33, d: 0.12, t: 0.90},  // D5
-            {f: 523.25, d: 0.12, t: 1.05},  // C5
-            {f: 329.63, d: 0.15, t: 1.25},  // E4
-            {f: 329.63, d: 0.12, t: 1.45},  // E4
-            {f: 261.63, d: 0.40, t: 1.60}   // C4
+            {f: 493.88, d: 0.12, t: 0},     {f: 698.46, d: 0.25, t: 0.15}, 
+            {f: 698.46, d: 0.12, t: 0.45},  {f: 698.46, d: 0.12, t: 0.60}, 
+            {f: 659.25, d: 0.12, t: 0.75},  {f: 587.33, d: 0.12, t: 0.90}, 
+            {f: 523.25, d: 0.12, t: 1.05},  {f: 329.63, d: 0.15, t: 1.25}, 
+            {f: 329.63, d: 0.12, t: 1.45},  {f: 261.63, d: 0.40, t: 1.60}  
         ];
-
         notes.forEach(note => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'square';
-            osc.frequency.value = note.f;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'square'; osc.frequency.value = note.f;
             gain.gain.setValueAtTime(0.15, audioCtx.currentTime + note.t);
             gain.gain.setTargetAtTime(0.001, audioCtx.currentTime + note.t + note.d, 0.05);
             osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(audioCtx.currentTime + note.t);
-            osc.stop(audioCtx.currentTime + note.t + note.d + 0.1);
+            osc.start(audioCtx.currentTime + note.t); osc.stop(audioCtx.currentTime + note.t + note.d + 0.1);
         });
-        
         if(navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100, 50, 300]); 
     }
     
-    /* 🍄 終極版：超級馬利奧 Level Complete (過關落旗) 音效合成！ */
+    // 3️⃣ 🏆 頒獎台：馬利奧 Level Complete 聲
     function playTadaSound() {
         if(audioCtx.state === 'suspended') audioCtx.resume();
-        
         const notes = [
-            // 第一段：C Major 上行
-            {f: 196.00, d: 0.05, t: 0},     {f: 261.63, d: 0.05, t: 0.05}, 
-            {f: 329.63, d: 0.05, t: 0.10},  {f: 392.00, d: 0.05, t: 0.15}, 
-            {f: 523.25, d: 0.05, t: 0.20},  {f: 659.25, d: 0.05, t: 0.25}, 
-            {f: 783.99, d: 0.15, t: 0.30},  {f: 659.25, d: 0.15, t: 0.45}, 
-
-            // 第二段：Ab Major 上行
-            {f: 207.65, d: 0.05, t: 0.60},  {f: 261.63, d: 0.05, t: 0.65}, 
-            {f: 311.13, d: 0.05, t: 0.70},  {f: 415.30, d: 0.05, t: 0.75}, 
-            {f: 523.25, d: 0.05, t: 0.80},  {f: 622.25, d: 0.05, t: 0.85}, 
-            {f: 830.61, d: 0.15, t: 0.90},  {f: 622.25, d: 0.15, t: 1.05}, 
-
-            // 第三段：Bb Major 上行 + 結尾
-            {f: 233.08, d: 0.05, t: 1.20},  {f: 293.66, d: 0.05, t: 1.25}, 
-            {f: 349.23, d: 0.05, t: 1.30},  {f: 466.16, d: 0.05, t: 1.35}, 
-            {f: 587.33, d: 0.05, t: 1.40},  {f: 698.46, d: 0.05, t: 1.45}, 
-            {f: 932.33, d: 0.15, t: 1.50},  
-            {f: 932.33, d: 0.05, t: 1.70},  {f: 932.33, d: 0.05, t: 1.80}, 
-            {f: 932.33, d: 0.15, t: 1.90},  {f: 1046.50, d: 0.60, t: 2.10}  // C6
+            {f: 196.00, d: 0.05, t: 0},     {f: 261.63, d: 0.05, t: 0.05}, {f: 329.63, d: 0.05, t: 0.10},  {f: 392.00, d: 0.05, t: 0.15}, 
+            {f: 523.25, d: 0.05, t: 0.20},  {f: 659.25, d: 0.05, t: 0.25}, {f: 783.99, d: 0.15, t: 0.30},  {f: 659.25, d: 0.15, t: 0.45}, 
+            {f: 207.65, d: 0.05, t: 0.60},  {f: 261.63, d: 0.05, t: 0.65}, {f: 311.13, d: 0.05, t: 0.70},  {f: 415.30, d: 0.05, t: 0.75}, 
+            {f: 523.25, d: 0.05, t: 0.80},  {f: 622.25, d: 0.05, t: 0.85}, {f: 830.61, d: 0.15, t: 0.90},  {f: 622.25, d: 0.15, t: 1.05}, 
+            {f: 233.08, d: 0.05, t: 1.20},  {f: 293.66, d: 0.05, t: 1.25}, {f: 349.23, d: 0.05, t: 1.30},  {f: 466.16, d: 0.05, t: 1.35}, 
+            {f: 587.33, d: 0.05, t: 1.40},  {f: 698.46, d: 0.05, t: 1.45}, {f: 932.33, d: 0.15, t: 1.50},  
+            {f: 932.33, d: 0.05, t: 1.70},  {f: 932.33, d: 0.05, t: 1.80}, {f: 932.33, d: 0.15, t: 1.90},  {f: 1046.50, d: 0.60, t: 2.10}  
         ];
-
         notes.forEach(note => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'square'; 
-            osc.frequency.value = note.f;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'square'; osc.frequency.value = note.f;
             gain.gain.setValueAtTime(0.15, audioCtx.currentTime + note.t);
             gain.gain.setTargetAtTime(0.001, audioCtx.currentTime + note.t + note.d, 0.05);
             osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(audioCtx.currentTime + note.t);
-            osc.stop(audioCtx.currentTime + note.t + note.d + 0.1);
+            osc.start(audioCtx.currentTime + note.t); osc.stop(audioCtx.currentTime + note.t + note.d + 0.1);
         });
-        
         if(navigator.vibrate) navigator.vibrate([100, 100, 100, 100, 100, 100, 100, 100, 400]); 
+    }
+
+    // 4️⃣ 🍄 包底狂歡：馬利奧食大菇 PowerUp 聲
+    function playPowerUpSound() {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const notes = [
+            {f: 392.00, t: 0.00}, {f: 523.25, t: 0.03}, {f: 659.25, t: 0.06}, {f: 783.99, t: 0.09}, {f: 1046.50, t: 0.12}, {f: 1318.51, t: 0.15},
+            {f: 415.30, t: 0.18}, {f: 554.37, t: 0.21}, {f: 698.46, t: 0.24}, {f: 830.61, t: 0.27}, {f: 1108.73, t: 0.30}, {f: 1396.91, t: 0.33},
+            {f: 466.16, t: 0.36}, {f: 587.33, t: 0.39}, {f: 698.46, t: 0.42}, {f: 932.33, t: 0.45}, {f: 1174.66, t: 0.48}, {f: 1396.91, t: 0.51}
+        ];
+        notes.forEach(note => {
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'square'; osc.frequency.value = note.f;
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime + note.t);
+            gain.gain.setTargetAtTime(0.001, audioCtx.currentTime + note.t + 0.03, 0.01);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + note.t); osc.stop(audioCtx.currentTime + note.t + 0.05);
+        });
+        if(navigator.vibrate) navigator.vibrate([50, 50, 50, 50, 100]); 
     }
 
     window.onload = function() {
@@ -478,7 +473,14 @@
         
         if (baodiIndex === winnerIndex) { alert("⚠️ 贏家點可以包底㗎！請重新選擇。"); return; }
 
-        if(hasBoom || baodiIndex >= 0) playMarioDeathSound(); else playWinSound();
+        // 🍄 終極判定邏輯：包底播大菇，普通炒牌播Game Over，普通贏牌播金幣
+        if (baodiIndex >= 0) {
+            playPowerUpSound(); 
+        } else if (hasBoom) {
+            playMarioDeathSound();
+        } else {
+            playWinSound();
+        }
 
         saveStateForUndo(); 
         lastWinner = winnerIndex; 
