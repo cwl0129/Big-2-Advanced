@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
     
-    <title>鋤大Dee計分器</title>
+    <title>鋤大D計分器</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { 
@@ -126,10 +126,22 @@
             </div>
         </div>
         <div class="scoreboard">
-            <div class="player-score"><div class="dealer-badge" id="dealer0">👑</div><input type="text" id="name0" class="player-name-input" value="玩家 A" maxlength="6" oninput="syncNames(0)" onclick="this.select()"><span class="score-val" id="total0">0</span><div class="win-count" id="win0">勝: 0</div></div>
-            <div class="player-score"><div class="dealer-badge" id="dealer1">👑</div><input type="text" id="name1" class="player-name-input" value="玩家 B" maxlength="6" oninput="syncNames(1)" onclick="this.select()"><span class="score-val" id="total1">0</span><div class="win-count" id="win1">勝: 0</div></div>
-            <div class="player-score"><div class="dealer-badge" id="dealer2">👑</div><input type="text" id="name2" class="player-name-input" value="玩家 C" maxlength="6" oninput="syncNames(2)" onclick="this.select()"><span class="score-val" id="total2">0</span><div class="win-count" id="win2">勝: 0</div></div>
-            <div class="player-score"><div class="dealer-badge" id="dealer3">👑</div><input type="text" id="name3" class="player-name-input" value="玩家 D" maxlength="6" oninput="syncNames(3)" onclick="this.select()"><span class="score-val" id="total3">0</span><div class="win-count" id="win3">勝: 0</div></div>
+            <div class="player-score">
+                <div class="dealer-badge" id="dealer0">👑</div>
+                <input type="text" id="name0" class="player-name-input" value="玩家 A" maxlength="6" oninput="syncNames(0)" onclick="this.select()"><span class="score-val" id="total0">0</span><div class="win-count" id="win0">勝: 0</div>
+            </div>
+            <div class="player-score">
+                <div class="dealer-badge" id="dealer1">👑</div>
+                <input type="text" id="name1" class="player-name-input" value="玩家 B" maxlength="6" oninput="syncNames(1)" onclick="this.select()"><span class="score-val" id="total1">0</span><div class="win-count" id="win1">勝: 0</div>
+            </div>
+            <div class="player-score">
+                <div class="dealer-badge" id="dealer2">👑</div>
+                <input type="text" id="name2" class="player-name-input" value="玩家 C" maxlength="6" oninput="syncNames(2)" onclick="this.select()"><span class="score-val" id="total2">0</span><div class="win-count" id="win2">勝: 0</div>
+            </div>
+            <div class="player-score">
+                <div class="dealer-badge" id="dealer3">👑</div>
+                <input type="text" id="name3" class="player-name-input" value="玩家 D" maxlength="6" oninput="syncNames(3)" onclick="this.select()"><span class="score-val" id="total3">0</span><div class="win-count" id="win3">勝: 0</div>
+            </div>
         </div>
     </div>
 
@@ -235,11 +247,10 @@
     
     function playWinSound() { playTone(523.25, 'sine', 0.1, 0.1); setTimeout(() => playTone(659.25, 'sine', 0.2, 0.1), 100); }
     
-    /* 🍄 終極版：超級馬利奧 Game Over 音效合成！ */
+    /* 🍄 超級馬利奧 Game Over 音效合成！ */
     function playMarioDeathSound() {
         if(audioCtx.state === 'suspended') audioCtx.resume();
         
-        // 經典 8-bit 馬利奧死咗嗰陣嘅音符 (B4, F5, F5, E5, D5, C5, E4, C4)
         const notes = [
             {f: 493.88, d: 0.12, t: 0},     // B4
             {f: 698.46, d: 0.25, t: 0.15},  // F5
@@ -256,23 +267,58 @@
         notes.forEach(note => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'square'; // 使用方波，製造紅白機 8-bit 感覺
+            osc.type = 'square';
             osc.frequency.value = note.f;
-            
-            // 聲音漸弱效果，避免爆音
             gain.gain.setValueAtTime(0.15, audioCtx.currentTime + note.t);
             gain.gain.setTargetAtTime(0.001, audioCtx.currentTime + note.t + note.d, 0.05);
-
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(audioCtx.currentTime + note.t);
             osc.stop(audioCtx.currentTime + note.t + note.d + 0.1);
         });
         
-        // 配合 iPhone 唔會震，如果有得震嘅 Android 機就會跟住拍子震！
         if(navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100, 50, 300]); 
     }
     
-    function playTadaSound() { playTone(440, 'triangle', 0.1, 0.1); setTimeout(() => playTone(440, 'triangle', 0.1, 0.1), 150); setTimeout(() => playTone(587.33, 'triangle', 0.4, 0.1), 300); if(navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500]); }
+    /* 🍄 終極版：超級馬利奧 Level Complete (過關落旗) 音效合成！ */
+    function playTadaSound() {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        
+        const notes = [
+            // 第一段：C Major 上行
+            {f: 196.00, d: 0.05, t: 0},     {f: 261.63, d: 0.05, t: 0.05}, 
+            {f: 329.63, d: 0.05, t: 0.10},  {f: 392.00, d: 0.05, t: 0.15}, 
+            {f: 523.25, d: 0.05, t: 0.20},  {f: 659.25, d: 0.05, t: 0.25}, 
+            {f: 783.99, d: 0.15, t: 0.30},  {f: 659.25, d: 0.15, t: 0.45}, 
+
+            // 第二段：Ab Major 上行
+            {f: 207.65, d: 0.05, t: 0.60},  {f: 261.63, d: 0.05, t: 0.65}, 
+            {f: 311.13, d: 0.05, t: 0.70},  {f: 415.30, d: 0.05, t: 0.75}, 
+            {f: 523.25, d: 0.05, t: 0.80},  {f: 622.25, d: 0.05, t: 0.85}, 
+            {f: 830.61, d: 0.15, t: 0.90},  {f: 622.25, d: 0.15, t: 1.05}, 
+
+            // 第三段：Bb Major 上行 + 結尾
+            {f: 233.08, d: 0.05, t: 1.20},  {f: 293.66, d: 0.05, t: 1.25}, 
+            {f: 349.23, d: 0.05, t: 1.30},  {f: 466.16, d: 0.05, t: 1.35}, 
+            {f: 587.33, d: 0.05, t: 1.40},  {f: 698.46, d: 0.05, t: 1.45}, 
+            {f: 932.33, d: 0.15, t: 1.50},  
+            {f: 932.33, d: 0.05, t: 1.70},  {f: 932.33, d: 0.05, t: 1.80}, 
+            {f: 932.33, d: 0.15, t: 1.90},  {f: 1046.50, d: 0.60, t: 2.10}  // C6
+        ];
+
+        notes.forEach(note => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square'; 
+            osc.frequency.value = note.f;
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime + note.t);
+            gain.gain.setTargetAtTime(0.001, audioCtx.currentTime + note.t + note.d, 0.05);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + note.t);
+            osc.stop(audioCtx.currentTime + note.t + note.d + 0.1);
+        });
+        
+        if(navigator.vibrate) navigator.vibrate([100, 100, 100, 100, 100, 100, 100, 100, 400]); 
+    }
 
     window.onload = function() {
         if (localStorage.getItem('big2_theme') === 'dark') { document.body.classList.add('dark-mode'); document.getElementById('theme-btn').innerText = '☀️'; }
@@ -432,7 +478,6 @@
         
         if (baodiIndex === winnerIndex) { alert("⚠️ 贏家點可以包底㗎！請重新選擇。"); return; }
 
-        // 觸發馬利奧死咗嗰陣嘅聲！
         if(hasBoom || baodiIndex >= 0) playMarioDeathSound(); else playWinSound();
 
         saveStateForUndo(); 
